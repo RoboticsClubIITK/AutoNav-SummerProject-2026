@@ -1,0 +1,81 @@
+# ==========================
+# ROS 2 Workspace
+# ==========================
+
+# Build outputs
+build/
+install/
+log/
+
+# Colcon metadata
+.colcon/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+
+# Compiled libraries
+*.so
+*.a
+*.o
+*.obj
+*.dll
+*.dylib
+*.exe
+
+# VS Code
+.vscode/
+
+# CLion
+.idea/
+
+# Qt Creator
+*.user
+*.user.*
+*.autosave
+
+# Vim
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# ROS logs
+*.log
+
+# Coverage
+coverage/
+.coverage
+htmlcov/
+
+# Python virtual environments
+venv/
+.venv/
+env/
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Temporary files
+*.tmp
+*.bak
