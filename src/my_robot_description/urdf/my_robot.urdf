@@ -1,0 +1,614 @@
+<robot name="my_robot">
+<!--
+-->
+<material name="grey">
+<color rgba="0.6 0.6 0.6 1.0"/>
+</material>
+<material name="dark_grey">
+<color rgba="0.25 0.25 0.25 1.0"/>
+</material>
+<material name="black">
+<color rgba="0.05 0.05 0.05 1.0"/>
+</material>
+<material name="silver">
+<color rgba="0.75 0.75 0.75 1.0"/>
+</material>
+<material name="orange">
+<color rgba="1.0 0.45 0.0 1.0"/>
+</material>
+<material name="green">
+<color rgba="0.0 0.6 0.2 1.0"/>
+</material>
+<material name="blue">
+<color rgba="0.0 0.3 0.8 1.0"/>
+</material>
+<material name="red">
+<color rgba="0.8 0.1 0.1 1.0"/>
+</material>
+<material name="purple">
+<color rgba="0.5 0.0 0.6 1.0"/>
+</material>
+<!--
+ ========================================================================
+       BASE FOOTPRINT (ground-projected reference frame, standard ROS practice)
+       ======================================================================== 
+-->
+<link name="base_footprint"/>
+<joint name="base_footprint_to_base_link" type="fixed">
+<parent link="base_footprint"/>
+<child link="base_link"/>
+<!--
+ base_link sits at wheel-axle height above the ground 
+-->
+<origin xyz="0 0 0.03" rpy="0 0 0"/>
+</joint>
+<!--
+ ========================================================================
+       PLATE 4  (bottom plate = base_link) - carries motors, wheels, caster
+       ======================================================================== 
+-->
+<link name="base_link">
+<visual>
+<geometry>
+<cylinder radius="0.10" length="0.002"/>
+</geometry>
+<material name="grey"/>
+</visual>
+<collision>
+<geometry>
+<cylinder radius="0.10" length="0.002"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.05"/>
+<inertia ixx="0.000125" ixy="0" ixz="0" iyy="0.000125" iyz="0" izz="0.00025"/>
+</inertial>
+</link>
+<!-- - Left wheel (dia 60 mm, thickness 26 mm) - -->
+<link name="left_wheel">
+<visual>
+<origin xyz="0 0 0" rpy="1.5708 0 0"/>
+<geometry>
+<cylinder radius="0.03" length="0.026"/>
+</geometry>
+<material name="black"/>
+</visual>
+<collision>
+<origin xyz="0 0 0" rpy="1.5708 0 0"/>
+<geometry>
+<cylinder radius="0.03" length="0.026"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.05"/>
+<inertia ixx="0.0000141" ixy="0" ixz="0" iyy="0.0000141" iyz="0" izz="0.0000225"/>
+</inertial>
+</link>
+<joint name="left_wheel_joint" type="continuous">
+<parent link="base_link"/>
+<child link="left_wheel"/>
+<origin xyz="0 0.115 0" rpy="0 0 0"/>
+<axis xyz="0 1 0"/>
+</joint>
+<!-- - Right wheel - -->
+<link name="right_wheel">
+<visual>
+<origin xyz="0 0 0" rpy="1.5708 0 0"/>
+<geometry>
+<cylinder radius="0.03" length="0.026"/>
+</geometry>
+<material name="black"/>
+</visual>
+<collision>
+<origin xyz="0 0 0" rpy="1.5708 0 0"/>
+<geometry>
+<cylinder radius="0.03" length="0.026"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.05"/>
+<inertia ixx="0.0000141" ixy="0" ixz="0" iyy="0.0000141" iyz="0" izz="0.0000225"/>
+</inertial>
+</link>
+<joint name="right_wheel_joint" type="continuous">
+<parent link="base_link"/>
+<child link="right_wheel"/>
+<origin xyz="0 -0.115 0" rpy="0 0 0"/>
+<axis xyz="0 1 0"/>
+</joint>
+<!--
+ - Left motor (placeholder TT/N20-style gear-motor body, dia 22mm x 35mm long) -
+       Mounted ON TOP of plate_4 (resting on its top surface), inboard of the wheel,
+       rather than embedded at the plate's own mid-plane. The (unmodeled) output
+       shaft/gearbox carries the drive down and outward to the wheel hub below -
+       i.e. the motor drives the wheel "from the inside" of the chassis.
+       Fixed to base_link since only the shaft/wheel spins, not the motor housing. 
+-->
+<link name="left_motor">
+<visual>
+<origin xyz="0 0 0" rpy="1.5708 0 0"/>
+<geometry>
+<cylinder radius="0.011" length="0.035"/>
+</geometry>
+<material name="dark_grey"/>
+</visual>
+<collision>
+<origin xyz="0 0 0" rpy="1.5708 0 0"/>
+<geometry>
+<cylinder radius="0.011" length="0.035"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.04"/>
+<inertia ixx="6e-6" ixy="0" ixz="0" iyy="6e-6" iyz="0" izz="3e-6"/>
+</inertial>
+</link>
+<joint name="left_motor_joint" type="fixed">
+<parent link="base_link"/>
+<child link="left_motor"/>
+<origin xyz="0 0.075 0.012" rpy="0 0 0"/>
+</joint>
+<!-- - Right motor - -->
+<link name="right_motor">
+<visual>
+<origin xyz="0 0 0" rpy="1.5708 0 0"/>
+<geometry>
+<cylinder radius="0.011" length="0.035"/>
+</geometry>
+<material name="dark_grey"/>
+</visual>
+<collision>
+<origin xyz="0 0 0" rpy="1.5708 0 0"/>
+<geometry>
+<cylinder radius="0.011" length="0.035"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.04"/>
+<inertia ixx="6e-6" ixy="0" ixz="0" iyy="6e-6" iyz="0" izz="3e-6"/>
+</inertial>
+</link>
+<joint name="right_motor_joint" type="fixed">
+<parent link="base_link"/>
+<child link="right_motor"/>
+<origin xyz="0 -0.075 0.012" rpy="0 0 0"/>
+</joint>
+<!--
+ - Front caster ball (r ~7mm, derived from 615.75 mm^2 contact area) - 
+-->
+<link name="caster_wheel">
+<visual>
+<geometry>
+<sphere radius="0.007"/>
+</geometry>
+<material name="dark_grey"/>
+</visual>
+<collision>
+<geometry>
+<sphere radius="0.007"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.005"/>
+<inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+</inertial>
+</link>
+<!--
+ - Caster mount (post mounted on TOP of plate_4, passing down through a hole
+       in the plate to reach the ball below - not a bracket hanging under the plate) -
+       Post spans z=+0.006 (a bit above the plate's top surface, where it's
+       attached/bolted) down through the plate to z=-0.016 (just above the ball). 
+-->
+<link name="caster_mount">
+<visual>
+<geometry>
+<cylinder radius="0.006" length="0.022"/>
+</geometry>
+<material name="dark_grey"/>
+</visual>
+<collision>
+<geometry>
+<cylinder radius="0.006" length="0.022"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.01"/>
+<inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+</inertial>
+</link>
+<joint name="caster_mount_joint" type="fixed">
+<parent link="base_link"/>
+<child link="caster_mount"/>
+<origin xyz="0.08 0 -0.005" rpy="0 0 0"/>
+</joint>
+<joint name="caster_wheel_joint" type="fixed">
+<parent link="caster_mount"/>
+<child link="caster_wheel"/>
+<origin xyz="0 0 -0.018" rpy="0 0 0"/>
+</joint>
+<!--
+ ========================================================================
+       4 SUPPORT RODS  (10 mm dia threaded rods running through all plates)
+       Layout (relative to plate center / base_link x-y):
+         front-left  : x=+0.04226  y=+0.0375
+         front-right : x=+0.04226  y=-0.0375
+         rear-right  : x=-0.04226  y=-0.0450
+         rear-left   : x=-0.04226  y=+0.0450
+       ======================================================================== 
+-->
+<link name="rod_front_left">
+<visual>
+<geometry>
+<cylinder radius="0.005" length="0.106"/>
+</geometry>
+<material name="silver"/>
+</visual>
+<collision>
+<geometry>
+<cylinder radius="0.005" length="0.106"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.03"/>
+<inertia ixx="0.0000025" ixy="0" ixz="0" iyy="0.0000025" iyz="0" izz="1e-7"/>
+</inertial>
+</link>
+<joint name="rod_front_left_joint" type="fixed">
+<parent link="base_link"/>
+<child link="rod_front_left"/>
+<origin xyz="0.04226 0.0375 0.052" rpy="0 0 0"/>
+</joint>
+<link name="rod_front_right">
+<visual>
+<geometry>
+<cylinder radius="0.005" length="0.106"/>
+</geometry>
+<material name="silver"/>
+</visual>
+<collision>
+<geometry>
+<cylinder radius="0.005" length="0.106"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.03"/>
+<inertia ixx="0.0000025" ixy="0" ixz="0" iyy="0.0000025" iyz="0" izz="1e-7"/>
+</inertial>
+</link>
+<joint name="rod_front_right_joint" type="fixed">
+<parent link="base_link"/>
+<child link="rod_front_right"/>
+<origin xyz="0.04226 -0.0375 0.052" rpy="0 0 0"/>
+</joint>
+<link name="rod_rear_right">
+<visual>
+<geometry>
+<cylinder radius="0.005" length="0.106"/>
+</geometry>
+<material name="silver"/>
+</visual>
+<collision>
+<geometry>
+<cylinder radius="0.005" length="0.106"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.03"/>
+<inertia ixx="0.0000025" ixy="0" ixz="0" iyy="0.0000025" iyz="0" izz="1e-7"/>
+</inertial>
+</link>
+<joint name="rod_rear_right_joint" type="fixed">
+<parent link="base_link"/>
+<child link="rod_rear_right"/>
+<origin xyz="-0.04226 -0.045 0.052" rpy="0 0 0"/>
+</joint>
+<link name="rod_rear_left">
+<visual>
+<geometry>
+<cylinder radius="0.005" length="0.106"/>
+</geometry>
+<material name="silver"/>
+</visual>
+<collision>
+<geometry>
+<cylinder radius="0.005" length="0.106"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.03"/>
+<inertia ixx="0.0000025" ixy="0" ixz="0" iyy="0.0000025" iyz="0" izz="1e-7"/>
+</inertial>
+</link>
+<joint name="rod_rear_left_joint" type="fixed">
+<parent link="base_link"/>
+<child link="rod_rear_left"/>
+<origin xyz="-0.04226 0.045 0.052" rpy="0 0 0"/>
+</joint>
+<!--
+ ========================================================================
+       PLATE 3  (BNO055 + Arduino Nano + L298N)
+       Gap to plate_4 = 40 mm clear -> center-to-center = 0.029 m
+       ======================================================================== 
+-->
+<link name="plate_3">
+<visual>
+<geometry>
+<cylinder radius="0.10" length="0.002"/>
+</geometry>
+<material name="grey"/>
+</visual>
+<collision>
+<geometry>
+<cylinder radius="0.10" length="0.002"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.05"/>
+<inertia ixx="0.000125" ixy="0" ixz="0" iyy="0.000125" iyz="0" izz="0.00025"/>
+</inertial>
+</link>
+<joint name="plate_4_to_plate_3" type="fixed">
+<parent link="base_link"/>
+<child link="plate_3"/>
+<origin xyz="0 0 0.029" rpy="0 0 0"/>
+</joint>
+<!-- BNO055 IMU -->
+<link name="imu_link">
+<visual>
+<geometry>
+<box size="0.026 0.022 0.002"/>
+</geometry>
+<material name="purple"/>
+</visual>
+<collision>
+<geometry>
+<box size="0.026 0.022 0.002"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.01"/>
+<inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+</inertial>
+</link>
+<joint name="imu_joint" type="fixed">
+<parent link="plate_3"/>
+<child link="imu_link"/>
+<origin xyz="0.03 0.03 0.002" rpy="0 0 0"/>
+</joint>
+<!-- Arduino Nano -->
+<link name="arduino_nano_link">
+<visual>
+<geometry>
+<box size="0.045 0.018 0.002"/>
+</geometry>
+<material name="blue"/>
+</visual>
+<collision>
+<geometry>
+<box size="0.045 0.018 0.002"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.01"/>
+<inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+</inertial>
+</link>
+<joint name="arduino_nano_joint" type="fixed">
+<parent link="plate_3"/>
+<child link="arduino_nano_link"/>
+<origin xyz="-0.03 0.02 0.002" rpy="0 0 0"/>
+</joint>
+<!-- L298N motor driver -->
+<link name="l298n_link">
+<visual>
+<geometry>
+<box size="0.043 0.043 0.02"/>
+</geometry>
+<material name="red"/>
+</visual>
+<collision>
+<geometry>
+<box size="0.043 0.043 0.02"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.03"/>
+<inertia ixx="5e-6" ixy="0" ixz="0" iyy="5e-6" iyz="0" izz="5e-6"/>
+</inertial>
+</link>
+<joint name="l298n_joint" type="fixed">
+<parent link="plate_3"/>
+<child link="l298n_link"/>
+<origin xyz="-0.02 -0.03 0.011" rpy="0 0 0"/>
+</joint>
+<!--
+ ========================================================================
+       PLATE 2  (Raspberry Pi 5)
+       Gap to plate_3 = 31 mm clear -> center-to-center = 0.033 m
+       ======================================================================== 
+-->
+<link name="plate_2">
+<visual>
+<geometry>
+<cylinder radius="0.10" length="0.002"/>
+</geometry>
+<material name="grey"/>
+</visual>
+<collision>
+<geometry>
+<cylinder radius="0.10" length="0.002"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.05"/>
+<inertia ixx="0.000125" ixy="0" ixz="0" iyy="0.000125" iyz="0" izz="0.00025"/>
+</inertial>
+</link>
+<joint name="plate_3_to_plate_2" type="fixed">
+<parent link="plate_3"/>
+<child link="plate_2"/>
+<origin xyz="0 0 0.033" rpy="0 0 0"/>
+</joint>
+<!-- Raspberry Pi 5 (~85 x 56 x 17 mm) -->
+<link name="raspberry_pi5_link">
+<visual>
+<geometry>
+<box size="0.085 0.056 0.017"/>
+</geometry>
+<material name="green"/>
+</visual>
+<collision>
+<geometry>
+<box size="0.085 0.056 0.017"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.05"/>
+<inertia ixx="2e-5" ixy="0" ixz="0" iyy="2e-5" iyz="0" izz="2e-5"/>
+</inertial>
+</link>
+<joint name="raspberry_pi5_joint" type="fixed">
+<parent link="plate_2"/>
+<child link="raspberry_pi5_link"/>
+<origin xyz="0.03 0 0.0095" rpy="0 0 0"/>
+</joint>
+<!--
+ ========================================================================
+       PLATE 1  (top plate - RPLIDAR A1)
+       Gap to plate_2 = 27 mm clear -> center-to-center = 0.042 m
+       ======================================================================== 
+-->
+<link name="plate_1">
+<visual>
+<geometry>
+<cylinder radius="0.10" length="0.002"/>
+</geometry>
+<material name="grey"/>
+</visual>
+<collision>
+<geometry>
+<cylinder radius="0.10" length="0.002"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.05"/>
+<inertia ixx="0.000125" ixy="0" ixz="0" iyy="0.000125" iyz="0" izz="0.00025"/>
+</inertial>
+</link>
+<joint name="plate_2_to_plate_1" type="fixed">
+<parent link="plate_2"/>
+<child link="plate_1"/>
+<origin xyz="0 0 0.042" rpy="0 0 0"/>
+</joint>
+<!--
+ RPLIDAR A1 (approx real dims: dia 0.070 m, height 0.040 m) 
+-->
+<link name="rplidar_link">
+<visual>
+<geometry>
+<cylinder radius="0.035" length="0.040"/>
+</geometry>
+<material name="orange"/>
+</visual>
+<collision>
+<geometry>
+<cylinder radius="0.035" length="0.040"/>
+</geometry>
+</collision>
+<inertial>
+<mass value="0.19"/>
+<inertia ixx="5e-5" ixy="0" ixz="0" iyy="5e-5" iyz="0" izz="5e-5"/>
+</inertial>
+</link>
+<joint name="rplidar_joint" type="fixed">
+<parent link="plate_1"/>
+<child link="rplidar_link"/>
+<origin xyz="0 0 0.021" rpy="0 0 0"/>
+</joint>
+<!--
+ ========================================================================
+       RPLIDAR A1 SENSOR PLUGIN (approximate real specs: 360 deg, 0.15-12m range,
+       ~10 Hz scan rate). Requires the Sensors system plugin + ogre2 render
+       engine already declared in the world file.
+       ======================================================================== 
+-->
+<gazebo reference="rplidar_link">
+<sensor name="rplidar" type="gpu_lidar">
+<pose>0 0 0 0 0 0</pose>
+<topic>scan</topic>
+<update_rate>10</update_rate>
+<always_on>1</always_on>
+<visualize>true</visualize>
+<lidar>
+<scan>
+<horizontal>
+<samples>360</samples>
+<resolution>1</resolution>
+<min_angle>-3.14159</min_angle>
+<max_angle>3.14159</max_angle>
+</horizontal>
+</scan>
+<range>
+<min>0.15</min>
+<max>12.0</max>
+<resolution>0.01</resolution>
+</range>
+</lidar>
+</sensor>
+</gazebo>
+<!--
+ ========================================================================
+       GAZEBO-SPECIFIC PHYSICS TAGS
+       Plain URDF has no concept of surface friction - Gazebo reads these
+       separately per link. High friction on the driven wheels so they grip
+       instead of sliding; near-zero friction on the caster so it doesn't
+       resist turning (it's a free-spinning ball, not a driven wheel).
+       ======================================================================== 
+-->
+<gazebo reference="left_wheel">
+<mu1>1.0</mu1>
+<mu2>1.0</mu2>
+</gazebo>
+<gazebo reference="right_wheel">
+<mu1>1.0</mu1>
+<mu2>1.0</mu2>
+</gazebo>
+<gazebo reference="caster_wheel">
+<mu1>0.001</mu1>
+<mu2>0.001</mu2>
+</gazebo>
+<!--
+ ========================================================================
+       JOINT STATE PUBLISHER PLUGIN
+       Without this, Gazebo never publishes joint states, so robot_state_publisher
+       never gets data for the wheel joints and /tf only ever contains the
+       static (fixed-joint) transforms - the wheels never visibly "connect" to
+       the rest of the TF tree even though they spin in the 3D view.
+       ======================================================================== 
+-->
+<gazebo>
+<plugin filename="ignition-gazebo-joint-state-publisher-system" name="ignition::gazebo::systems::JointStatePublisher"> </plugin>
+</gazebo>
+<!--
+ ========================================================================
+       DIFFERENTIAL DRIVE PLUGIN
+       wheel_separation = distance between the two wheel joint y-offsets
+       (0.115 - (-0.115) = 0.23 m). wheel_radius matches the wheel links (0.03 m).
+       Publishing cmd_vel/odom on plain topic names (not namespaced under the
+       robot name) to keep things simple for now.
+       ======================================================================== 
+-->
+<gazebo>
+<plugin filename="ignition-gazebo-diff-drive-system" name="ignition::gazebo::systems::DiffDrive">
+<left_joint>left_wheel_joint</left_joint>
+<right_joint>right_wheel_joint</right_joint>
+<wheel_separation>0.23</wheel_separation>
+<wheel_radius>0.03</wheel_radius>
+<odom_publish_frequency>50</odom_publish_frequency>
+<topic>cmd_vel</topic>
+<odom_topic>odom</odom_topic>
+<frame_id>odom</frame_id>
+<child_frame_id>base_footprint</child_frame_id>
+</plugin>
+</gazebo>
+</robot>
