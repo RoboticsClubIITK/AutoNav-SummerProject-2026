@@ -587,28 +587,17 @@
        ======================================================================== 
 -->
 <gazebo>
-<plugin filename="ignition-gazebo-joint-state-publisher-system" name="ignition::gazebo::systems::JointStatePublisher"> </plugin>
-</gazebo>
-<!--
- ========================================================================
-       DIFFERENTIAL DRIVE PLUGIN
-       wheel_separation = distance between the two wheel joint y-offsets
-       (0.115 - (-0.115) = 0.23 m). wheel_radius matches the wheel links (0.03 m).
-       Publishing cmd_vel/odom on plain topic names (not namespaced under the
-       robot name) to keep things simple for now.
-       ======================================================================== 
--->
-<gazebo>
 <plugin filename="ignition-gazebo-diff-drive-system" name="ignition::gazebo::systems::DiffDrive">
-<left_joint>left_wheel_joint</left_joint>
-<right_joint>right_wheel_joint</right_joint>
-<wheel_separation>0.23</wheel_separation>
-<wheel_radius>0.03</wheel_radius>
-<odom_publish_frequency>50</odom_publish_frequency>
-<topic>cmd_vel</topic>
-<odom_topic>odom</odom_topic>
-<frame_id>odom</frame_id>
-<child_frame_id>base_footprint</child_frame_id>
+  <left_joint>left_wheel_joint</left_joint>
+  <right_joint>right_wheel_joint</right_joint>
+  <wheel_separation>0.23</wheel_separation>
+  <wheel_radius>0.03</wheel_radius>
+  <odom_publish_frequency>50</odom_publish_frequency>
+  <topic>cmd_vel</topic>
+  <odom_topic>odom</odom_topic>
+  <frame_id>odom</frame_id>
+  <child_frame_id>base_link</child_frame_id>
+  <publish_odom_tf>false</publish_odom_tf>
 </plugin>
 </gazebo>
 </robot>
