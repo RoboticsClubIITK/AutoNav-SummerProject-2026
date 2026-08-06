@@ -10,6 +10,18 @@ __pycache__/
 # VSCode
 .vscode/
 
+# Local assistant and shell artifacts accidentally created in the workspace
+.claude/
+.mcp.json
+.bash_profile
+.bashrc
+.gitconfig
+.gitmodules
+.profile
+.ripgreprc
+.zprofile
+.zshrc
+
 # CLion
 .idea/
 

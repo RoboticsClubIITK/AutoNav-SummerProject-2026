@@ -24,5 +24,6 @@ if(BUILD_TESTING)
 endif()
 
 install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
+install(FILES README.md DESTINATION share/${PROJECT_NAME})
 
 ament_package()

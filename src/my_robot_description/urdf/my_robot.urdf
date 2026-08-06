@@ -503,7 +503,7 @@
 <!--
  RPLIDAR A1 (approx real dims: dia 0.070 m, height 0.040 m) 
 -->
-<link name="rplidar_link">
+<link name="laser">
 <visual>
 <geometry>
 <cylinder radius="0.035" length="0.040"/>
@@ -522,82 +522,7 @@
 </link>
 <joint name="rplidar_joint" type="fixed">
 <parent link="plate_1"/>
-<child link="rplidar_link"/>
+<child link="laser"/>
 <origin xyz="0 0 0.021" rpy="0 0 0"/>
 </joint>
-<!--
- ========================================================================
-       RPLIDAR A1 SENSOR PLUGIN (approximate real specs: 360 deg, 0.15-12m range,
-       ~10 Hz scan rate). Requires the Sensors system plugin + ogre2 render
-       engine already declared in the world file.
-       ======================================================================== 
--->
-<gazebo reference="rplidar_link">
-<sensor name="rplidar" type="gpu_lidar">
-<pose>0 0 0 0 0 0</pose>
-<topic>scan</topic>
-<update_rate>10</update_rate>
-<always_on>1</always_on>
-<visualize>true</visualize>
-<lidar>
-<scan>
-<horizontal>
-<samples>360</samples>
-<resolution>1</resolution>
-<min_angle>-3.14159</min_angle>
-<max_angle>3.14159</max_angle>
-</horizontal>
-</scan>
-<range>
-<min>0.15</min>
-<max>12.0</max>
-<resolution>0.01</resolution>
-</range>
-</lidar>
-</sensor>
-</gazebo>
-<!--
- ========================================================================
-       GAZEBO-SPECIFIC PHYSICS TAGS
-       Plain URDF has no concept of surface friction - Gazebo reads these
-       separately per link. High friction on the driven wheels so they grip
-       instead of sliding; near-zero friction on the caster so it doesn't
-       resist turning (it's a free-spinning ball, not a driven wheel).
-       ======================================================================== 
--->
-<gazebo reference="left_wheel">
-<mu1>1.0</mu1>
-<mu2>1.0</mu2>
-</gazebo>
-<gazebo reference="right_wheel">
-<mu1>1.0</mu1>
-<mu2>1.0</mu2>
-</gazebo>
-<gazebo reference="caster_wheel">
-<mu1>0.001</mu1>
-<mu2>0.001</mu2>
-</gazebo>
-<!--
- ========================================================================
-       JOINT STATE PUBLISHER PLUGIN
-       Without this, Gazebo never publishes joint states, so robot_state_publisher
-       never gets data for the wheel joints and /tf only ever contains the
-       static (fixed-joint) transforms - the wheels never visibly "connect" to
-       the rest of the TF tree even though they spin in the 3D view.
-       ======================================================================== 
--->
-<gazebo>
-<plugin filename="ignition-gazebo-diff-drive-system" name="ignition::gazebo::systems::DiffDrive">
-  <left_joint>left_wheel_joint</left_joint>
-  <right_joint>right_wheel_joint</right_joint>
-  <wheel_separation>0.23</wheel_separation>
-  <wheel_radius>0.03</wheel_radius>
-  <odom_publish_frequency>50</odom_publish_frequency>
-  <topic>cmd_vel</topic>
-  <odom_topic>odom</odom_topic>
-  <frame_id>odom</frame_id>
-  <child_frame_id>base_link</child_frame_id>
-  <publish_odom_tf>false</publish_odom_tf>
-</plugin>
-</gazebo>
 </robot>

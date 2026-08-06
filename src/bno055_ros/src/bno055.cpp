@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 
 #include <cstring>
@@ -37,15 +38,29 @@ bool Bno055::writeByte(uint8_t reg, uint8_t value)
 
 bool Bno055::readBytes(uint8_t reg, uint8_t * buffer, size_t length)
 {
-  if (write(fd_, &reg, 1) != 1) {
-    perror("bno055: register select failed");
-    return false;
+  i2c_msg messages[2] = {};
+  messages[0].addr = address_;
+  messages[0].flags = 0;
+  messages[0].len = 1;
+  messages[0].buf = &reg;
+  messages[1].addr = address_;
+  messages[1].flags = I2C_M_RD;
+  messages[1].len = static_cast<__u16>(length);
+  messages[1].buf = buffer;
+
+  i2c_rdwr_ioctl_data transaction = {};
+  transaction.msgs = messages;
+  transaction.nmsgs = 2;
+
+  for (int attempt = 0; attempt < 3; ++attempt) {
+    if (ioctl(fd_, I2C_RDWR, &transaction) == 2) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
-  if (read(fd_, buffer, length) != static_cast<ssize_t>(length)) {
-    perror("bno055: read failed");
-    return false;
-  }
-  return true;
+
+  perror("bno055: register read failed");
+  return false;
 }
 
 bool Bno055::initialize()
