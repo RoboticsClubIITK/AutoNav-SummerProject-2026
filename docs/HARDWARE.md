@@ -7,6 +7,34 @@
 | RPLIDAR A1 | USB serial | `/dev/ttyUSB0`, 115200 baud | `/scan` |
 | BNO055 | I2C bus 1 | `0x28` | `/imu/data` |
 
+### USB serial device paths
+
+The RPLIDAR USB adapter usually appears as `/dev/ttyUSB0`, but Linux may assign
+`/dev/ttyUSB1` or another number when it is plugged into a different port or
+when another USB serial device is connected first. The driver works normally as
+long as `serial_port` names the active device.
+
+Check current serial devices with:
+
+```bash
+ls -l /dev/ttyUSB* /dev/ttyACM*
+```
+
+Start the RPLIDAR on a changed device path, for example:
+
+```bash
+ros2 launch robot_bringup robot_bringup.launch.py serial_port:=/dev/ttyUSB1
+```
+
+For a stable path that survives USB port changes, inspect:
+
+```bash
+ls -l /dev/serial/by-id/
+```
+
+Use the RPLIDAR's full `/dev/serial/by-id/...` path as `serial_port`. The Nano
+usually appears separately as `/dev/ttyACM0` for the Arduino bridge.
+
 The BNO055 driver uses combined I2C register transactions with retries. This is
 important for reliable communication with the connected module.
 

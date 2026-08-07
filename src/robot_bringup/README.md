@@ -54,6 +54,11 @@ If the LiDAR serial device changes, override the port without editing code:
 ros2 launch robot_bringup robot_bringup.launch.py serial_port:=/dev/ttyUSB0
 ```
 
+Use `ls -l /dev/ttyUSB* /dev/ttyACM*` to find the assigned device. Prefer the
+RPLIDAR's stable `/dev/serial/by-id/...` symlink when available, because a
+`ttyUSB` number can change after moving USB ports or connecting another serial
+device.
+
 ## View from the laptop with RViz
 
 Connect the Pi and laptop to the same LAN. On both devices use the same ROS 2

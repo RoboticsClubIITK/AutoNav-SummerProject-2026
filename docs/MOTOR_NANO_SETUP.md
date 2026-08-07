@@ -120,6 +120,10 @@ Connect the Nano by USB to the Pi. Find its port, normally `/dev/ttyACM0`:
 ls -l /dev/ttyACM* /dev/ttyUSB*
 ```
 
+The RPLIDAR normally uses `/dev/ttyUSB*` while the Nano normally uses
+`/dev/ttyACM*`. These device numbers can change after reconnecting USB devices.
+Use `/dev/serial/by-id/...` when available for a stable device path.
+
 Then run the bridge by itself:
 
 ```bash

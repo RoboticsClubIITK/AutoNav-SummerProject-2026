@@ -37,6 +37,10 @@ Useful launch arguments:
 | `rviz` | `false` | Open configured RViz |
 | `publish_joint_states` | `true` | Publish zero wheel positions until real encoder joint states exist |
 
+If the RPLIDAR device number changes, override `serial_port`. Prefer its stable
+`/dev/serial/by-id/...` symlink when available; see
+[Hardware and calibration](HARDWARE.md#usb-serial-device-paths).
+
 ## Validation checklist
 
 ```bash
