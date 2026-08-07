@@ -60,5 +60,5 @@ map → odom → base_footprint → base_link → laser
 ```
 
 The future encoder bridge must not publish a second `odom → base_link` TF if
-the EKF publishes it. Configure the encoder odometry publisher with TF disabled
-and let `robot_localization` own that transform.
+the EKF publishes it. The supplied `arduino_base` bridge already has TF disabled
+and lets `robot_localization` own that transform.

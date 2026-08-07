@@ -15,6 +15,12 @@ Build only the active packages during development:
 colcon build --packages-select bno055_ros my_robot_description robot_bringup
 ```
 
+To build the Arduino bridge as well:
+
+```bash
+colcon build --packages-select arduino_base
+```
+
 ## Launch current hardware
 
 ```bash

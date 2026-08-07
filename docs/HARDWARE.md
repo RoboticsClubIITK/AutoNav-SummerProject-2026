@@ -20,7 +20,49 @@ The physical orientation of the board must match the URDF `imu_link` transform.
 Confirm that turning the robot left produces a positive ROS yaw after the final
 axis convention is configured. Calibrate the BNO055 before tuning the EKF.
 
-## Encoder and motor requirements
+## Arduino, motor, and encoder requirements
+
+### Cytron SmartDriveDuo-10 (MDDS10)
+
+The selected motor driver is a Cytron SmartDriveDuo-10 (MDDS10), not an L298N.
+It controls two brushed DC motors independently and accepts a 7–35 V motor
+supply. The two 12 V DCGM-3865 motors connect one per channel.
+
+| Connection | Connect to |
+| --- | --- |
+| Battery positive through an appropriately rated fuse | MDDS10 `B+` |
+| Battery negative | MDDS10 `B-` / GND |
+| Left motor `M` wires | MDDS10 `M1A`, `M1B` |
+| Right motor `M` wires | MDDS10 `M2A`, `M2B` |
+| Nano GND | MDDS10 signal GND |
+| Nano D9 | MDDS10 `PWM1` |
+| Nano D7 | MDDS10 `DIR1` |
+| Nano D10 | MDDS10 `PWM2` |
+| Nano D8 | MDDS10 `DIR2` |
+
+Configure the MDDS10 for **independent PWM + direction MCU control** according
+to the switch table printed on the back of the board. Connect by the printed
+input labels, not by connector position. The Nano must be powered by USB or a
+separate regulated supply; never power it from the MDDS10 motor terminals.
+
+Verify each DCGM-3865 motor's stall current is within the MDDS10 rating before
+connecting motor power. Start with wheels lifted, an inline battery fuse, and
+a low command speed.
+
+### Encoder wiring
+
+Each motor connector is labelled `M V A B G M`:
+
+| Motor connector label | Connection |
+| --- | --- |
+| `M` / `M` | Corresponding MDDS10 motor channel output |
+| `V` | Nano regulated 5 V |
+| `G` | Nano GND |
+| Left `A` / `B` | Nano D2 / D4 |
+| Right `A` / `B` | Nano D3 / D5 |
+
+All grounds must be common: battery negative, MDDS10 signal ground, Nano GND,
+and both encoder grounds.
 
 The Arduino Nano must:
 
@@ -30,6 +72,14 @@ The Arduino Nano must:
 4. Receive velocity commands from the Pi.
 
 The Pi-side bridge will publish `/wheel/odom` and subscribe to `/cmd_vel`.
+
+The implementation is in [arduino_base](../src/arduino_base/README.md). Upload
+`firmware/robot_base.ino` to the Nano, then set the measured encoder scale in
+`config/arduino_bridge.yaml` before launching the bridge.
+
+Follow [the temporary Nano and motor-driver setup guide](MOTOR_NANO_SETUP.md)
+for the safe wiring, firmware upload, tick-calibration, and teleoperation
+sequence.
 
 Before integrating the bridge, measure and record:
 

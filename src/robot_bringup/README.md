@@ -2,7 +2,8 @@
 
 This package tests the real RPLIDAR with `slam_toolbox` and starts the physical
 BNO055 driver. It does not start Gazebo, the Arduino interface, motor control,
-or the EKF. Those will be integrated after encoder feedback is available.
+or the EKF by default. Enable the Arduino bridge only after firmware upload and
+encoder calibration.
 
 ## What starts
 
@@ -16,6 +17,8 @@ or the EKF. Those will be integrated after encoder feedback is available.
 4. `bno055_ros`, which publishes `sensor_msgs/msg/Imu` on `/imu/data`.
 5. A **temporary fixed** `odom` to `base_footprint` transform.
 6. `slam_toolbox`, which consumes `/scan` and creates `/map`.
+7. Optionally, `arduino_base`, which bridges Nano encoder data after it is
+   calibrated and enabled with `use_arduino:=true`.
 
 The fixed odometry transform is only for this LiDAR-only compatibility test.
 It allows SLAM Toolbox to receive the complete `map -> odom -> base_link ->
@@ -32,7 +35,7 @@ model is RPLIDAR A1, which uses 115200 baud.
 ```bash
 cd ~/lidar_ws
 source /opt/ros/jazzy/setup.bash
-colcon build --packages-select my_robot_description robot_bringup
+colcon build --packages-select arduino_base bno055_ros my_robot_description robot_bringup
 source install/setup.bash
 ros2 launch robot_bringup robot_bringup.launch.py
 ```
@@ -86,15 +89,18 @@ to `laser` transform and check the `slam_toolbox` terminal output.
 
 ## Next hardware phase
 
-Do not change the SLAM topic names later. Add the Arduino bridge so it
-subscribes to `/cmd_vel` and publishes encoder odometry to `/wheel/odom`.
-Connect BNO055 to publish `/imu/data`. Then configure `robot_localization` to
-fuse both signals and replace the temporary fixed odometry transform with the
-EKF `odom` to `base_link` transform.
+Do not change the SLAM topic names later. The Arduino bridge subscribes to
+`/cmd_vel` and publishes encoder odometry to `/wheel/odom`. Then configure
+`robot_localization` to fuse `/wheel/odom` and the already-running `/imu/data`,
+replacing the temporary fixed odometry transform with the EKF `odom` to
+`base_link` transform.
 
 When the Arduino publishes real `sensor_msgs/msg/JointState` feedback, start
 the launch with `publish_joint_states:=false` to disable the temporary zero
 joint-state publisher.
+
+After uploading the MDDS10 Nano firmware and setting the encoder tick scale,
+enable the serial bridge with `use_arduino:=true`.
 
 Before enabling motors, implement a command timeout / emergency stop in the
 Arduino firmware and verify encoder directions at low speed.

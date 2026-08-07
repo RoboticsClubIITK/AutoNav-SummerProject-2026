@@ -326,7 +326,7 @@
 </joint>
 <!--
  ========================================================================
-       PLATE 3  (BNO055 + Arduino Nano + L298N)
+      PLATE 3  (BNO055 + Arduino Nano + Cytron MDDS10)
        Gap to plate_4 = 40 mm clear -> center-to-center = 0.029 m
        ======================================================================== 
 -->
@@ -398,17 +398,17 @@
 <child link="arduino_nano_link"/>
 <origin xyz="-0.03 0.02 0.002" rpy="0 0 0"/>
 </joint>
-<!-- L298N motor driver -->
-<link name="l298n_link">
+<!-- Cytron SmartDriveDuo-10 (MDDS10) motor driver -->
+<link name="mdds10_link">
 <visual>
 <geometry>
-<box size="0.043 0.043 0.02"/>
+<box size="0.106 0.084 0.024"/>
 </geometry>
 <material name="red"/>
 </visual>
 <collision>
 <geometry>
-<box size="0.043 0.043 0.02"/>
+<box size="0.106 0.084 0.024"/>
 </geometry>
 </collision>
 <inertial>
@@ -416,9 +416,9 @@
 <inertia ixx="5e-6" ixy="0" ixz="0" iyy="5e-6" iyz="0" izz="5e-6"/>
 </inertial>
 </link>
-<joint name="l298n_joint" type="fixed">
+<joint name="mdds10_joint" type="fixed">
 <parent link="plate_3"/>
-<child link="l298n_link"/>
+<child link="mdds10_link"/>
 <origin xyz="-0.02 -0.03 0.011" rpy="0 0 0"/>
 </joint>
 <!--

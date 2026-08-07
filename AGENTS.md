@@ -17,6 +17,8 @@ changing runtime behavior.
   package.
 - `robot_bringup`: integration layer for launch files, configuration, RViz, and
   documentation.
+- `arduino_base`: Nano firmware and ROS serial bridge. Keep its safety timeout
+  enabled and require a measured encoder tick scale before publishing odometry.
 - `nav2_ros`: reserved for the future navigation integration.
 
 ## Topic and TF conventions
@@ -45,6 +47,10 @@ Do not introduce duplicate publishers for those dynamic transforms.
 `robot_bringup` currently publishes a static `odom → base_footprint` transform
 for LiDAR-only SLAM testing and zero wheel joint states for RViz. Remove or
 disable both when real encoder odometry and joint states are integrated.
+
+For the Nano, MDDS10, encoder, and temporary teleoperation process, follow
+[docs/MOTOR_NANO_SETUP.md](docs/MOTOR_NANO_SETUP.md). Do not assume encoder
+ticks-per-wheel-revolution; it must be measured before enabling odometry.
 
 ## Build and validation
 

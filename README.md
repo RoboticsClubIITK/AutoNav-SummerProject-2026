@@ -46,12 +46,14 @@ ros2 launch robot_bringup robot_bringup.launch.py serial_port:=/dev/ttyUSB0
 | `my_robot_description` | URDF robot geometry and fixed sensor frames. |
 | `rplidar_ros` | Vendor RPLIDAR ROS 2 driver; publishes `/scan`. |
 | `robot_bringup` | Launches current hardware, TF, RViz, and SLAM Toolbox. |
+| `arduino_base` | Nano firmware and future USB serial bridge for MDDS10, encoders, and `/cmd_vel`. |
 | `nav2_ros` | Placeholder for the future Nav2 integration. |
 
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Hardware and calibration](docs/HARDWARE.md)
+- [Temporary Nano and motor-driver setup](docs/MOTOR_NANO_SETUP.md)
 - [Development and validation](docs/DEVELOPMENT.md)
 - [Agent conventions](AGENTS.md)
 - [Bringup-specific guide](src/robot_bringup/README.md)

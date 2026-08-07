@@ -1,7 +1,8 @@
 """Launch the live RPLIDAR-only SLAM compatibility test.
 
-This starts the physical RPLIDAR and BNO055, but not Arduino, EKF, or motor
-nodes. The fixed odom-to-base transform only supplies the TF chain required for a
+This starts the physical RPLIDAR and BNO055. The optional Arduino bridge is
+disabled by default; EKF and motor nodes are not started. The fixed odom-to-base
+transform only supplies the TF chain required for a
 stationary LiDAR test and scan-matching demonstration; it is not odometry.
 """
 
@@ -27,6 +28,8 @@ def generate_launch_description():
     rviz_config = LaunchConfiguration('rviz_config')
     publish_joint_states = LaunchConfiguration('publish_joint_states')
     use_imu = LaunchConfiguration('use_imu')
+    use_arduino = LaunchConfiguration('use_arduino')
+    arduino_config = LaunchConfiguration('arduino_config')
 
     with open(os.path.join(description_share, 'urdf', 'my_robot.urdf'), encoding='utf-8') as urdf_file:
         robot_description = urdf_file.read()
@@ -86,6 +89,15 @@ def generate_launch_description():
         output='screen',
     )
 
+    arduino_bridge = Node(
+        package='arduino_base',
+        executable='serial_bridge',
+        name='serial_bridge',
+        parameters=[arduino_config],
+        condition=IfCondition(use_arduino),
+        output='screen',
+    )
+
     slam_toolbox_node = LifecycleNode(
         package='slam_toolbox',
         executable='sync_slam_toolbox_node',
@@ -132,6 +144,19 @@ def generate_launch_description():
             description='Start the physical BNO055 driver and publish /imu/data.',
         ),
         DeclareLaunchArgument(
+            'use_arduino',
+            default_value='false',
+            description='Start the Arduino serial bridge after firmware and encoder calibration are ready.',
+        ),
+        DeclareLaunchArgument(
+            'arduino_config',
+            default_value=os.path.join(
+                get_package_share_directory('arduino_base'),
+                'config',
+                'arduino_bridge.yaml'),
+            description='Arduino bridge parameter file.',
+        ),
+        DeclareLaunchArgument(
             'publish_joint_states',
             default_value='true',
             description='Publish zero wheel joint states until encoder feedback is available.',
@@ -145,6 +170,7 @@ def generate_launch_description():
         test_odom_tf,
         rplidar_node,
         imu_node,
+        arduino_bridge,
         slam_toolbox_node,
         configure_slam,
         activate_slam,
