@@ -60,13 +60,59 @@ Expected current results:
 
 ## Remote RViz
 
-Run the hardware bringup on the Pi without RViz. On a laptop on the same LAN,
-source the same ROS distribution and workspace, use the same `ROS_DOMAIN_ID`,
-and run:
+RViz can run on a laptop while the Pi is physically mounted on the robot. The
+laptop subscribes to the Pi's ROS 2 topics over Wi-Fi; no SSH desktop or display
+connected to the Pi is needed. This moves RViz rendering to the laptop, but does
+not move Gazebo simulation CPU/GPU work if Gazebo is running on the Pi.
+
+Connect both devices to the same Wi-Fi router or the same hotspot. The network
+must allow device-to-device traffic; disable Wi-Fi client isolation / AP
+isolation if it is enabled.
+
+### Pi terminal
+
+Set the ROS discovery settings and start hardware without RViz:
 
 ```bash
+source /opt/ros/jazzy/setup.bash
+source ~/lidar_ws/install/setup.bash
+export ROS_DOMAIN_ID=25
+export ROS_LOCALHOST_ONLY=0
+export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
+ros2 launch robot_bringup robot_bringup.launch.py rviz:=false
+```
+
+### Laptop terminal
+
+Install ROS 2 Jazzy and RViz on the laptop. Copy or clone this workspace, build
+the `robot_bringup` package, and use the identical discovery settings:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/lidar_ws/install/setup.bash
+export ROS_DOMAIN_ID=25
+export ROS_LOCALHOST_ONLY=0
+export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
 ros2 launch robot_bringup rviz.launch.py
 ```
 
-Set `ROS_LOCALHOST_ONLY=0` on both machines. Wi-Fi client isolation must be
-disabled for ROS 2 discovery to work.
+If the workspace is not present on the laptop, copy
+`src/robot_bringup/config/lidar_slam.rviz` there and run `rviz2 -d` with that
+file instead. The `RobotModel` display still receives `/robot_description` from
+the Pi.
+
+### Verify ROS discovery
+
+On the laptop, these commands should show the Pi's nodes and data:
+
+```bash
+ros2 node list
+ros2 topic list
+ros2 topic echo --once /scan
+ros2 topic echo --once /imu/data
+```
+
+If no topics appear, confirm both machines use exactly the same
+`ROS_DOMAIN_ID`, are on the same IP subnet, have `ROS_LOCALHOST_ONLY=0`, and
+are not using a VPN. Test with a phone hotspot or simple home router before
+changing ROS configuration further.
