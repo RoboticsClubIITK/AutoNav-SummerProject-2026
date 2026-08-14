@@ -29,8 +29,9 @@ EKF.
 
 ## Start the LiDAR-only test on the Pi
 
-The connected CP2102 USB adapter is exposed as `/dev/ttyUSB0`. The current robot
-model is RPLIDAR A1, which uses 115200 baud.
+The connected CP2102 USB adapter has a stable `/dev/serial/by-id/...` path and
+currently appears as `/dev/ttyUSB0`. The current robot model is RPLIDAR A1,
+which uses 115200 baud.
 
 ```bash
 cd ~/lidar_ws
@@ -104,8 +105,17 @@ When the Arduino publishes real `sensor_msgs/msg/JointState` feedback, start
 the launch with `publish_joint_states:=false` to disable the temporary zero
 joint-state publisher.
 
-After uploading the MDDS10 Nano firmware and setting the encoder tick scale,
+After uploading the L298N Nano firmware and setting the encoder tick scale,
 enable the serial bridge with `use_arduino:=true`.
+
+For real sensor mapping with EKF enabled, use:
+
+```bash
+ros2 launch robot_bringup mapping.launch.py
+```
+
+This replaces the temporary static odometry TF with EKF output. Use it only
+after checking encoder and motor directions with the wheels lifted.
 
 Before enabling motors, implement a command timeout / emergency stop in the
 Arduino firmware and verify encoder directions at low speed.

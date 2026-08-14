@@ -1,7 +1,7 @@
-# Temporary Nano, MDDS10, Motor, and Encoder Setup
+# Temporary Nano, L298N, Motor, and Encoder Setup
 
 This guide is the temporary setup procedure for bench-testing the Arduino Nano,
-Cytron SmartDriveDuo-10 (MDDS10), two DCGM-3865 12 V motors, and their
+an L298N dual H-bridge, two DCGM-3865 12 V motors, and their
 encoder feedback. It is intentionally separate from EKF and autonomous
 navigation setup.
 
@@ -15,19 +15,19 @@ replacement for a battery disconnect.
 | Part | Role |
 | --- | --- |
 | Raspberry Pi | ROS 2, LiDAR, BNO055, SLAM, and USB serial bridge |
-| Arduino Nano | Encoder counting, command timeout, and MDDS10 control signals |
-| Cytron MDDS10 | Two-channel 12 V brushed DC motor H-bridge |
+| Arduino Nano | Encoder counting, command timeout, and L298N control signals |
+| L298N | Dual-channel 12 V brushed DC motor H-bridge |
 | Left/right DCGM-3865 | Drive motors with encoder leads `M V A B G M` |
 | 12 V battery | Motor power only |
 
-## 2. MDDS10 power and motor wiring
+## 2. L298N power and motor wiring
 
 | Wire | Destination |
 | --- | --- |
-| Battery positive through a correctly rated inline fuse | MDDS10 `B+` |
-| Battery negative | MDDS10 `B-` / GND |
-| Left motor `M` and `M` | MDDS10 `M1A` and `M1B` |
-| Right motor `M` and `M` | MDDS10 `M2A` and `M2B` |
+| Battery positive through a correctly rated inline fuse | L298N `+12V` / `Vs` |
+| Battery negative | L298N `GND` |
+| Left motor `M` and `M` | L298N `OUT1` and `OUT2` |
+| Right motor `M` and `M` | L298N `OUT3` and `OUT4` |
 
 The exact polarity of each motor does not matter for the first wiring. If a
 wheel turns backward during testing, first stop power, then either swap that
@@ -37,12 +37,17 @@ firmware.
 Never power the Nano from `B+`, `B-`, or a motor output. Power the Nano from
 its USB cable or a separate regulated supply.
 
+The DCGM-3865-12V-EN-240RPM is specified for 12 V, 1.0 A maximum rated current,
+and 3.5 A maximum locked-rotor current. A typical L298N is not a safe
+long-term driver for this current. Use only short, wheels-lifted, low-speed
+tests. Replace it with a higher-current driver before sustained ground driving.
+
 ## 3. Common ground and encoder wiring
 
 All these grounds must be connected together:
 
 ```text
-Battery negative = MDDS10 signal GND = Nano GND = both encoder G wires
+Battery negative = L298N GND = Nano GND = both encoder G wires
 ```
 
 Each motor cable is labelled `M V A B G M`:
@@ -53,24 +58,26 @@ Each motor cable is labelled `M V A B G M`:
 | `G` | Nano GND | Nano GND |
 | `A` | D2 | D3 |
 | `B` | D4 | D5 |
-| `M`, `M` | MDDS10 `M1A`, `M1B` | MDDS10 `M2A`, `M2B` |
+| `M`, `M` | L298N `OUT1`, `OUT2` | L298N `OUT3`, `OUT4` |
 
 The encoder `V` line must be compatible with 5 V. Do not connect an unknown
 encoder supply directly until its datasheet or labelling confirms the voltage.
+For this motor, the manufacturer specifies 3.3 V or 5 V encoder supply; Nano
+5 V is appropriate.
 
-## 4. Nano-to-MDDS10 control wiring
+## 4. Nano-to-L298N control wiring
 
-Set the MDDS10 to **independent PWM + direction MCU control** using the
-DIP-switch table printed on the rear of the MDDS10. Connect by the printed
-header names:
+Remove the L298N `ENA` and `ENB` jumpers. Connect by the printed labels:
 
-| Nano pin | MDDS10 input |
+| Nano pin | L298N input |
 | ---: | --- |
 | GND | GND |
-| D9 | `PWM1` — left motor channel |
-| D7 | `DIR1` — left motor channel |
-| D10 | `PWM2` — right motor channel |
-| D8 | `DIR2` — right motor channel |
+| D9 | `ENA` — left PWM |
+| D7 | `IN1` — left forward/reverse |
+| D8 | `IN2` — left forward/reverse |
+| D10 | `ENB` — right PWM |
+| D11 | `IN3` — right forward/reverse |
+| D12 | `IN4` — right forward/reverse |
 
 The firmware pin definitions are in
 [src/arduino_base/firmware/robot_base.ino](../src/arduino_base/firmware/robot_base.ino).
@@ -94,35 +101,37 @@ CMD <linear_mps> <angular_radps>
 ```
 
 For example, `CMD 0.05 0.00` requests a slow forward movement. Do not send this
-until the wheels are lifted and the MDDS10 wiring has been checked.
+until the wheels are lifted and the L298N wiring has been checked.
 
 ## 6. Calibrate encoder ticks
 
-The firmware counts rising edges of encoder channel A. Measure the tick change
-for **one complete wheel revolution** for each wheel. The left and right counts
-should be close; investigate a large mismatch before driving.
+The firmware counts rising edges of encoder channel A. For this motor, the
+manufacturer specifies 13 PPR × 42:1 gearbox = **546 ticks per complete wheel
+revolution** with this decoding method. Manually turn each wheel one full
+revolution and verify the measured change is near 546 before driving.
 
 Set the measured value in
 [src/arduino_base/config/arduino_bridge.yaml](../src/arduino_base/config/arduino_bridge.yaml):
 
 ```yaml
-encoder_ticks_per_wheel_revolution: REPLACE_WITH_MEASURED_VALUE
+encoder_ticks_per_wheel_revolution: 546.0
 ```
 
-The default is `0`, which intentionally prevents `/wheel/odom` from being
-published. This prevents incorrect navigation data before calibration.
+Adjust this value only if the measured wheel-revolution count differs from 546.
 
 ## 7. Start the ROS bridge
 
-Connect the Nano by USB to the Pi. Find its port, normally `/dev/ttyACM0`:
+Connect the Nano by USB to the Pi. The current CH340 Nano uses the stable path
+`/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0` and currently appears as
+`/dev/ttyUSB1`. Check paths with:
 
 ```bash
 ls -l /dev/ttyACM* /dev/ttyUSB*
 ```
 
-The RPLIDAR normally uses `/dev/ttyUSB*` while the Nano normally uses
-`/dev/ttyACM*`. These device numbers can change after reconnecting USB devices.
-Use `/dev/serial/by-id/...` when available for a stable device path.
+The RPLIDAR currently uses `/dev/ttyUSB0` and the CH340 Nano currently uses
+`/dev/ttyUSB1`. These device numbers can change after reconnecting USB devices.
+Use `/dev/serial/by-id/...` whenever available for a stable device path.
 
 Then run the bridge by itself:
 
@@ -161,7 +170,7 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard
 The command flow is:
 
 ```text
-teleop_twist_keyboard → /cmd_vel → serial bridge → Nano → MDDS10 → motors
+teleop_twist_keyboard → /cmd_vel → serial bridge → Nano → L298N → motors
 ```
 
 Expected checks:

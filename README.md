@@ -46,7 +46,7 @@ ros2 launch robot_bringup robot_bringup.launch.py serial_port:=/dev/ttyUSB0
 | `my_robot_description` | URDF robot geometry and fixed sensor frames. |
 | `rplidar_ros` | Vendor RPLIDAR ROS 2 driver; publishes `/scan`. |
 | `robot_bringup` | Launches current hardware, TF, RViz, and SLAM Toolbox. |
-| `arduino_base` | Nano firmware and future USB serial bridge for MDDS10, encoders, and `/cmd_vel`. |
+| `arduino_base` | Nano firmware and USB serial bridge for L298N, encoders, and `/cmd_vel`. |
 | `nav2_ros` | Placeholder for the future Nav2 integration. |
 
 ## Documentation
@@ -60,7 +60,14 @@ ros2 launch robot_bringup robot_bringup.launch.py serial_port:=/dev/ttyUSB0
 
 ## Next milestone
 
-Implement Arduino Nano encoder firmware and a Pi serial bridge that publishes
-`/wheel/odom`. Then use `robot_localization` to fuse `/wheel/odom` and
-`/imu/data`, producing the dynamic `odom → base_link` transform required for
-reliable SLAM and navigation.
+After firmware upload, encoder calibration, and lifted-wheel motor testing, run
+the full real-sensor mapping stack:
+
+```bash
+ros2 launch robot_bringup mapping.launch.py
+```
+
+It fuses `/wheel/odom` and `/imu/data` with `robot_localization`, producing the
+dynamic `odom → base_footprint` transform required for reliable SLAM. Do not use
+this launch for driving until motor direction, encoder direction, and the
+emergency timeout have been physically verified.

@@ -27,11 +27,26 @@ colcon build --packages-select arduino_base
 ros2 launch robot_bringup robot_bringup.launch.py rviz:=true
 ```
 
+## Launch full real-sensor mapping
+
+After the Nano firmware is uploaded, the L298N has passed the lifted-wheel
+safety test, and encoder scale is verified, start:
+
+```bash
+ros2 launch robot_bringup mapping.launch.py
+```
+
+This launch enables the Arduino bridge and EKF, disables the temporary wheel
+joint publisher, and removes the temporary static odometry transform. The EKF
+fuses `/wheel/odom` and `/imu/data`, then publishes the dynamic `odom →
+base_footprint` TF used by SLAM Toolbox. Add `rviz:=false` when rendering on a
+remote laptop instead.
+
 Useful launch arguments:
 
 | Argument | Default | Purpose |
 | --- | --- | --- |
-| `serial_port` | `/dev/ttyUSB0` | RPLIDAR serial device |
+| `serial_port` | Stable RPLIDAR `/dev/serial/by-id/...` path | RPLIDAR serial device |
 | `serial_baudrate` | `115200` | RPLIDAR baud rate |
 | `use_imu` | `true` | Start the BNO055 node |
 | `rviz` | `false` | Open configured RViz |

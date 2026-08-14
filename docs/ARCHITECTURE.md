@@ -49,7 +49,7 @@ map → odom → base_footprint → base_link → laser
 | SLAM Toolbox | `map → odom` | TF | RViz / Nav2 |
 | Nav2 | `/cmd_vel` | `geometry_msgs/msg/Twist` | Future Arduino bridge |
 
-## Future motion-estimation graph
+## Real motion-estimation graph
 
 ```text
 /wheel/odom ─┐

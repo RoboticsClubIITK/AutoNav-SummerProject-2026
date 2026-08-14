@@ -2,7 +2,7 @@
 
 import math
 import time
-from typing import Optional
+from typing import Any, Optional
 
 import rclpy
 from geometry_msgs.msg import Twist
@@ -35,6 +35,8 @@ class SerialBridge(Node):
         self.declare_parameter('odom_frame', 'odom')
         self.declare_parameter('base_frame', 'base_link')
         self.declare_parameter('command_timeout', 0.25)
+        self.declare_parameter('max_linear_velocity', 0.05)
+        self.declare_parameter('max_angular_velocity', 0.5)
 
         self.serial_port = self.get_parameter('serial_port').value
         self.baudrate = self.get_parameter('baudrate').value
@@ -44,6 +46,8 @@ class SerialBridge(Node):
             'encoder_ticks_per_wheel_revolution').value
         self.odom_frame = self.get_parameter('odom_frame').value
         self.base_frame = self.get_parameter('base_frame').value
+        self.max_linear_velocity = self.get_parameter('max_linear_velocity').value
+        self.max_angular_velocity = self.get_parameter('max_angular_velocity').value
 
         self.command_subscription = self.create_subscription(
             Twist, '/cmd_vel', self.command_callback, 10)
@@ -52,7 +56,7 @@ class SerialBridge(Node):
         self.poll_timer = self.create_timer(0.01, self.poll_serial)
         self.reconnect_timer = self.create_timer(1.0, self.connect)
 
-        self.serial: Optional[serial.Serial] = None if serial else None
+        self.serial: Optional[Any] = None
         self.last_left_ticks: Optional[int] = None
         self.last_right_ticks: Optional[int] = None
         self.last_stamp = None
@@ -60,11 +64,12 @@ class SerialBridge(Node):
         self.y = 0.0
         self.yaw = 0.0
         self.invalid_ticks_reported = False
+        self.last_command_log_time = 0.0
+        self.last_command_signature = None
 
         if SERIAL_IMPORT_ERROR is not None:
             self.get_logger().error(
-                'pyserial is unavailable. Install the python3-serial package: %s',
-                SERIAL_IMPORT_ERROR)
+                f'pyserial is unavailable. Install python3-serial: {SERIAL_IMPORT_ERROR}')
         else:
             self.connect()
 
@@ -75,14 +80,15 @@ class SerialBridge(Node):
         try:
             self.serial = serial.Serial(self.serial_port, self.baudrate, timeout=0)
             self.serial.reset_input_buffer()
-            self.get_logger().info('Connected to Arduino on %s at %d baud.',
-                                   self.serial_port, self.baudrate)
-        except SerialException as error:
-            self.get_logger().debug('Arduino not available on %s: %s', self.serial_port, error)
+            self.get_logger().info(
+                f'Connected to Arduino on {self.serial_port} at {self.baudrate} baud.')
+        except (SerialException, OSError) as error:
+            self.get_logger().debug(
+                f'Arduino not available on {self.serial_port}: {error}')
 
     def disconnect(self, reason: Exception) -> None:
         """Close a failed connection and retry from the reconnect timer."""
-        self.get_logger().warning('Arduino serial connection lost: %s', reason)
+        self.get_logger().warning(f'Arduino serial connection lost: {reason}')
         if self.serial is not None:
             self.serial.close()
         self.serial = None
@@ -94,11 +100,50 @@ class SerialBridge(Node):
         """Forward a differential-drive velocity command to the Nano."""
         if self.serial is None:
             return
-        command = f'CMD {message.linear.x:.4f} {message.angular.z:.4f}\n'
+        if not math.isfinite(message.linear.x) or not math.isfinite(message.angular.z):
+            self.get_logger().warning('Rejected non-finite /cmd_vel and sent a stop command.')
+            linear_velocity = 0.0
+            angular_velocity = 0.0
+        else:
+            linear_velocity = max(
+                -self.max_linear_velocity,
+                min(message.linear.x, self.max_linear_velocity))
+            angular_velocity = max(
+                -self.max_angular_velocity,
+                min(message.angular.z, self.max_angular_velocity))
+        command = f'CMD {linear_velocity:.4f} {angular_velocity:.4f}\n'
         try:
             self.serial.write(command.encode('ascii'))
-        except SerialException as error:
+            self.log_motor_command(linear_velocity, angular_velocity)
+        except (SerialException, OSError) as error:
             self.disconnect(error)
+
+    def log_motor_command(self, linear_velocity: float, angular_velocity: float) -> None:
+        """Log the wheel commands forwarded to the Nano without flooding output."""
+        half_track = self.wheel_separation * 0.5
+        left_velocity = linear_velocity - angular_velocity * half_track
+        right_velocity = linear_velocity + angular_velocity * half_track
+        left_direction = self.direction_name(left_velocity)
+        right_direction = self.direction_name(right_velocity)
+        signature = (left_direction, right_direction)
+        now = time.monotonic()
+
+        if signature != self.last_command_signature or now - self.last_command_log_time >= 1.0:
+            self.get_logger().info(
+                'Forwarding motor command: '
+                f'left {left_direction} ({left_velocity:.3f} m/s), '
+                f'right {right_direction} ({right_velocity:.3f} m/s).')
+            self.last_command_signature = signature
+            self.last_command_log_time = now
+
+    @staticmethod
+    def direction_name(velocity: float) -> str:
+        """Return a readable wheel direction for command logging."""
+        if velocity > 1e-4:
+            return 'forward'
+        if velocity < -1e-4:
+            return 'reverse'
+        return 'stopped'
 
     def poll_serial(self) -> None:
         """Consume all complete encoder lines currently waiting on USB serial."""
@@ -109,20 +154,20 @@ class SerialBridge(Node):
                 line = self.serial.readline().decode('ascii', errors='replace').strip()
                 if line:
                     self.handle_line(line)
-        except SerialException as error:
+        except (SerialException, OSError) as error:
             self.disconnect(error)
 
     def handle_line(self, line: str) -> None:
         """Parse `ENC <millis> <left_ticks> <right_ticks>` from the Nano."""
         fields = line.split()
         if len(fields) != 4 or fields[0] != 'ENC':
-            self.get_logger().debug('Ignoring Nano serial line: %s', line)
+            self.get_logger().debug(f'Ignoring Nano serial line: {line}')
             return
         try:
             left_ticks = int(fields[2])
             right_ticks = int(fields[3])
         except ValueError:
-            self.get_logger().warning('Invalid encoder line from Nano: %s', line)
+            self.get_logger().warning(f'Invalid encoder line from Nano: {line}')
             return
 
         stamp = self.get_clock().now().to_msg()
@@ -200,10 +245,14 @@ def main() -> None:
         pass
     finally:
         if node.serial is not None:
-            node.serial.write(b'CMD 0.0000 0.0000\n')
+            try:
+                node.serial.write(b'CMD 0.0000 0.0000\n')
+            except (SerialException, OSError):
+                pass
             node.serial.close()
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

@@ -1,14 +1,15 @@
 # Arduino Nano base interface
 
 This package bridges an Arduino Nano to ROS 2 over USB serial. The supplied
-firmware targets a Cytron SmartDriveDuo-10 (MDDS10) in PWM + direction mode.
+firmware targets an L298N in ENA/IN1/IN2 and ENB/IN3/IN4 mode.
 
 ## Safety prerequisites
 
 - Do not connect a motor directly to the Nano.
-- Use a fused 12 V battery supply for MDDS10 `B+` / `B-`.
-- Join Nano GND, MDDS10 GND, battery negative, and encoder GND.
-- Verify motor stall current is within the MDDS10 limit.
+- Use a fused 12 V battery supply for L298N `+12V` / GND.
+- Join Nano GND, L298N GND, battery negative, and encoder GND.
+- The L298N is a short low-speed bench-test driver only for these motors; it
+  is not recommended for sustained ground driving at their 3.5 A stall current.
 - Keep motor power disconnected until encoder direction and command timeout
   behavior have been tested.
 
@@ -30,9 +31,10 @@ The Nano stops both motors if no valid `CMD` arrives within 250 ms.
 
 ## Required calibration
 
-Set `encoder_ticks_per_wheel_revolution` in `config/arduino_bridge.yaml` before
-publishing real odometry. The supplied value of `0` deliberately disables
-`/wheel/odom` rather than publishing incorrect odometry.
+The DCGM-3865-12V-EN-240RPM manufacturer specification is 13 PPR × 42:1 = 546
+PPR. The supplied configuration uses `546.0`, matching the firmware's
+rising-edge A-channel decoder. Verify this by manually turning a wheel exactly
+one full revolution before trusting odometry.
 
 ## ROS interface
 

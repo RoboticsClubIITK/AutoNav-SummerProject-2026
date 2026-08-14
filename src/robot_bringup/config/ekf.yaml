@@ -11,7 +11,9 @@ ekf_filter_node:
     print_diagnostics: true
 
     odom_frame: odom
-    base_link_frame: base_link
+    # The URDF defines base_footprint -> base_link. Publishing the EKF transform
+    # to base_footprint avoids assigning base_link two TF parents.
+    base_link_frame: base_footprint
     world_frame: odom
 
     #=====================================

@@ -1,18 +1,23 @@
 serial_bridge:
   ros__parameters:
     # Nano USB serial device. Prefer a stable udev symlink once created.
-    serial_port: /dev/ttyACM0
+    serial_port: /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0
     baudrate: 115200
 
     # Measured chassis dimensions. Update after physical measurement.
     wheel_radius: 0.03
     wheel_separation: 0.23
 
-    # REQUIRED: set from the DCGM-3865 encoder specification or measurement.
-    # This is counts per complete wheel revolution using the firmware's
-    # rising-edge A-channel decoder. A value of 0 disables odometry publishing.
-    encoder_ticks_per_wheel_revolution: 0
+    # DCGM-3865-12V-EN-240RPM: 13 PPR * 42:1 gearbox = 546 PPR.
+    # This matches the firmware's rising-edge A-channel decoder. Verify this
+    # value by manually turning each wheel through one full revolution.
+    encoder_ticks_per_wheel_revolution: 546.0
 
     odom_frame: odom
     base_frame: base_link
     command_timeout: 0.25
+
+    # Initial teleoperation safety limits. Increase only after direction,
+    # encoder, braking, and emergency-disconnect tests are complete.
+    max_linear_velocity: 0.05
+    max_angular_velocity: 0.5

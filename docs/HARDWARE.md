@@ -4,8 +4,9 @@
 
 | Device | Interface | Current address / device | ROS output |
 | --- | --- | --- | --- |
-| RPLIDAR A1 | USB serial | `/dev/ttyUSB0`, 115200 baud | `/scan` |
+| RPLIDAR A1 | USB serial | stable CP2102 `/dev/serial/by-id/...`, currently `ttyUSB0` | `/scan` |
 | BNO055 | I2C bus 1 | `0x28` | `/imu/data` |
+| Arduino Nano (CH340) | USB serial | stable `/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0`, currently `ttyUSB1` | encoder protocol |
 
 ### USB serial device paths
 
@@ -50,32 +51,47 @@ axis convention is configured. Calibrate the BNO055 before tuning the EKF.
 
 ## Arduino, motor, and encoder requirements
 
-### Cytron SmartDriveDuo-10 (MDDS10)
+### L298N dual H-bridge
 
-The selected motor driver is a Cytron SmartDriveDuo-10 (MDDS10), not an L298N.
-It controls two brushed DC motors independently and accepts a 7–35 V motor
-supply. The two 12 V DCGM-3865 motors connect one per channel.
+The current motor driver is an L298N dual H-bridge. It controls the two brushed
+DC motors through channel A (left) and channel B (right). The two 12 V
+DCGM-3865 motors connect one per channel.
+
+The DCGM-3865-12V-EN-240RPM manufacturer specifications are:
+
+| Property | Value |
+| --- | --- |
+| Working voltage | 12 V |
+| No-load speed | 240 rpm |
+| Rated speed | 125 rpm |
+| Rated current | 1.0 A maximum |
+| Locked-rotor current | 3.5 A maximum |
+| Encoder resolution | 13 PPR × 42:1 = 546 PPR |
+| Encoder supply | 3.3 V or 5 V |
+
+The motor locked-rotor current is 3.5 A maximum. A typical L298N is not a good
+long-term match for that current because of its high voltage drop and limited
+thermal capacity. Use it only for short, lifted-wheel, low-speed checks. Use a
+higher-current H-bridge for reliable ground driving.
 
 | Connection | Connect to |
 | --- | --- |
-| Battery positive through an appropriately rated fuse | MDDS10 `B+` |
-| Battery negative | MDDS10 `B-` / GND |
-| Left motor `M` wires | MDDS10 `M1A`, `M1B` |
-| Right motor `M` wires | MDDS10 `M2A`, `M2B` |
-| Nano GND | MDDS10 signal GND |
-| Nano D9 | MDDS10 `PWM1` |
-| Nano D7 | MDDS10 `DIR1` |
-| Nano D10 | MDDS10 `PWM2` |
-| Nano D8 | MDDS10 `DIR2` |
+| Battery positive through an appropriately rated fuse | L298N `+12V` / `Vs` |
+| Battery negative | L298N `GND` |
+| Left motor `M` wires | L298N `OUT1`, `OUT2` |
+| Right motor `M` wires | L298N `OUT3`, `OUT4` |
+| Nano GND | L298N `GND` |
+| Nano D9 | L298N `ENA` (remove ENA jumper) |
+| Nano D7 | L298N `IN1` |
+| Nano D8 | L298N `IN2` |
+| Nano D10 | L298N `ENB` (remove ENB jumper) |
+| Nano D11 | L298N `IN3` |
+| Nano D12 | L298N `IN4` |
 
-Configure the MDDS10 for **independent PWM + direction MCU control** according
-to the switch table printed on the back of the board. Connect by the printed
-input labels, not by connector position. The Nano must be powered by USB or a
-separate regulated supply; never power it from the MDDS10 motor terminals.
-
-Verify each DCGM-3865 motor's stall current is within the MDDS10 rating before
-connecting motor power. Start with wheels lifted, an inline battery fuse, and
-a low command speed.
+Remove the L298N `ENA` and `ENB` jumpers so the Nano controls speed with PWM.
+The Nano must be powered by USB or a separate regulated supply; never power it
+from a motor output. Start with wheels lifted, an inline battery fuse, and the
+low command speed configured in the firmware.
 
 ### Encoder wiring
 
@@ -83,14 +99,17 @@ Each motor connector is labelled `M V A B G M`:
 
 | Motor connector label | Connection |
 | --- | --- |
-| `M` / `M` | Corresponding MDDS10 motor channel output |
+| `M` / `M` | Corresponding L298N motor output |
 | `V` | Nano regulated 5 V |
 | `G` | Nano GND |
 | Left `A` / `B` | Nano D2 / D4 |
 | Right `A` / `B` | Nano D3 / D5 |
 
-All grounds must be common: battery negative, MDDS10 signal ground, Nano GND,
+All grounds must be common: battery negative, L298N ground, Nano GND,
 and both encoder grounds.
+
+For the PH2.0 six-pin connector, the manufacturer pin order is `M2`, `V`, `B`,
+`A`, `G`, `M1`. Connect by label, not connector position.
 
 The Arduino Nano must:
 

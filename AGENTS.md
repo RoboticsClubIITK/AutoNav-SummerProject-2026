@@ -48,7 +48,11 @@ Do not introduce duplicate publishers for those dynamic transforms.
 for LiDAR-only SLAM testing and zero wheel joint states for RViz. Remove or
 disable both when real encoder odometry and joint states are integrated.
 
-For the Nano, MDDS10, encoder, and temporary teleoperation process, follow
+`mapping.launch.py` enables the Arduino bridge and EKF, disables those temporary
+publishers, and makes the EKF own `odom → base_footprint`. Preserve this single
+TF ownership rule when modifying mapping behavior.
+
+For the Nano, L298N, encoder, and temporary teleoperation process, follow
 [docs/MOTOR_NANO_SETUP.md](docs/MOTOR_NANO_SETUP.md). Do not assume encoder
 ticks-per-wheel-revolution; it must be measured before enabling odometry.
 

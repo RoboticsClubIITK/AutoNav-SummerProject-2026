@@ -11,7 +11,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, EmitEvent, RegisterEventHandler
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.events import matches_action
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import LifecycleNode, Node
@@ -29,6 +29,7 @@ def generate_launch_description():
     publish_joint_states = LaunchConfiguration('publish_joint_states')
     use_imu = LaunchConfiguration('use_imu')
     use_arduino = LaunchConfiguration('use_arduino')
+    use_ekf = LaunchConfiguration('use_ekf')
     arduino_config = LaunchConfiguration('arduino_config')
 
     with open(os.path.join(description_share, 'urdf', 'my_robot.urdf'), encoding='utf-8') as urdf_file:
@@ -62,6 +63,7 @@ def generate_launch_description():
             '--roll', '0', '--pitch', '0', '--yaw', '0',
             '--frame-id', 'odom', '--child-frame-id', 'base_footprint',
         ],
+        condition=UnlessCondition(use_ekf),
         output='screen',
     )
 
@@ -95,6 +97,15 @@ def generate_launch_description():
         name='serial_bridge',
         parameters=[arduino_config],
         condition=IfCondition(use_arduino),
+        output='screen',
+    )
+
+    ekf_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        parameters=[os.path.join(bringup_share, 'config', 'ekf.yaml')],
+        condition=IfCondition(use_ekf),
         output='screen',
     )
 
@@ -135,7 +146,13 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        DeclareLaunchArgument('serial_port', default_value='/dev/ttyUSB0'),
+        DeclareLaunchArgument(
+            'serial_port',
+            default_value=(
+                '/dev/serial/by-id/'
+                'usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001-if00-port0'),
+            description='RPLIDAR serial device.',
+        ),
         DeclareLaunchArgument('serial_baudrate', default_value='115200'),
         DeclareLaunchArgument('rviz', default_value='false'),
         DeclareLaunchArgument(
@@ -147,6 +164,11 @@ def generate_launch_description():
             'use_arduino',
             default_value='false',
             description='Start the Arduino serial bridge after firmware and encoder calibration are ready.',
+        ),
+        DeclareLaunchArgument(
+            'use_ekf',
+            default_value='false',
+            description='Fuse /wheel/odom and /imu/data; publish odom to base_footprint TF.',
         ),
         DeclareLaunchArgument(
             'arduino_config',
@@ -171,6 +193,7 @@ def generate_launch_description():
         rplidar_node,
         imu_node,
         arduino_bridge,
+        ekf_node,
         slam_toolbox_node,
         configure_slam,
         activate_slam,
