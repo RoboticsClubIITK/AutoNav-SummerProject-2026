@@ -41,10 +41,10 @@ ekf_filter_node:
     odom0: /wheel/odom
 
     odom0_config: [
-      true,  true,  false,   # Position x y
+      false, false, false,   # Position: unavailable from one encoder during turns
       false, false, false,   # Orientation (IMU handles this)
       true,  false, false,   # Linear velocity
-      false, false, true,    # Angular velocity (yaw rate)
+      false, false, false,   # Angular velocity: unavailable from one encoder
       false, false, false    # Acceleration
     ]
 

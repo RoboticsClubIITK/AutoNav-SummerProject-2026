@@ -13,6 +13,13 @@ serial_bridge:
     # value by manually turning each wheel through one full revolution.
     encoder_ticks_per_wheel_revolution: 546.0
 
+    # Left encoder is not producing pulses (hardware fault). Odometry falls
+    # back to single-encoder mode using this wheel only. Straight-line
+    # distance is still tracked, but yaw/turning cannot be measured from
+    # encoders alone in this mode -- switch back to normal two-encoder
+    # odometry once the left encoder is fixed.
+    odom_source_wheel: right
+
     odom_frame: odom
     base_frame: base_link
     command_timeout: 0.25

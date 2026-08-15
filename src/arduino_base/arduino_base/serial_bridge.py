@@ -37,6 +37,9 @@ class SerialBridge(Node):
         self.declare_parameter('command_timeout', 0.25)
         self.declare_parameter('max_linear_velocity', 0.05)
         self.declare_parameter('max_angular_velocity', 0.5)
+        # NEW: which encoder to trust. The left encoder on this unit is dead,
+        # so odometry falls back to single-encoder (straight-line only) mode.
+        self.declare_parameter('odom_source_wheel', 'right')
 
         self.serial_port = self.get_parameter('serial_port').value
         self.baudrate = self.get_parameter('baudrate').value
@@ -48,6 +51,11 @@ class SerialBridge(Node):
         self.base_frame = self.get_parameter('base_frame').value
         self.max_linear_velocity = self.get_parameter('max_linear_velocity').value
         self.max_angular_velocity = self.get_parameter('max_angular_velocity').value
+        self.odom_source_wheel = self.get_parameter('odom_source_wheel').value
+        if self.odom_source_wheel not in ('left', 'right'):
+            self.get_logger().warning(
+                f"Invalid odom_source_wheel '{self.odom_source_wheel}', defaulting to 'right'.")
+            self.odom_source_wheel = 'right'
 
         self.command_subscription = self.create_subscription(
             Twist, '/cmd_vel', self.command_callback, 10)
@@ -57,8 +65,7 @@ class SerialBridge(Node):
         self.reconnect_timer = self.create_timer(1.0, self.connect)
 
         self.serial: Optional[Any] = None
-        self.last_left_ticks: Optional[int] = None
-        self.last_right_ticks: Optional[int] = None
+        self.last_source_ticks: Optional[int] = None
         self.last_stamp = None
         self.x = 0.0
         self.y = 0.0
@@ -92,8 +99,7 @@ class SerialBridge(Node):
         if self.serial is not None:
             self.serial.close()
         self.serial = None
-        self.last_left_ticks = None
-        self.last_right_ticks = None
+        self.last_source_ticks = None
         self.last_stamp = None
 
     def command_callback(self, message: Twist) -> None:
@@ -170,23 +176,43 @@ class SerialBridge(Node):
             self.get_logger().warning(f'Invalid encoder line from Nano: {line}')
             return
 
-        stamp = self.get_clock().now().to_msg()
-        self.publish_joint_states(stamp, left_ticks, right_ticks)
-        self.publish_odometry(stamp, left_ticks, right_ticks)
+        # Only one encoder is trusted; the other channel is ignored entirely.
+        source_ticks = right_ticks if self.odom_source_wheel == 'right' else left_ticks
 
-    def publish_joint_states(self, stamp, left_ticks: int, right_ticks: int) -> None:
-        """Publish wheel joint positions once encoder scale is configured."""
+        stamp = self.get_clock().now().to_msg()
+        self.publish_joint_states(stamp, source_ticks)
+        self.publish_odometry(stamp, source_ticks)
+
+    def publish_joint_states(self, stamp, source_ticks: int) -> None:
+        """Publish wheel joint positions using the single working encoder.
+
+        Both joints are reported with the same value since we only have one
+        working sensor -- this keeps /joint_states populated for anything
+        downstream (e.g. robot_state_publisher) that expects both wheel
+        joints to be present.
+        """
         if self.ticks_per_wheel_rev <= 0.0:
             return
         radians_per_tick = 2.0 * math.pi / self.ticks_per_wheel_rev
+        position = source_ticks * radians_per_tick
         message = JointState()
         message.header.stamp = stamp
         message.name = ['left_wheel_joint', 'right_wheel_joint']
-        message.position = [left_ticks * radians_per_tick, right_ticks * radians_per_tick]
+        message.position = [position, position]
         self.joint_state_publisher.publish(message)
 
-    def publish_odometry(self, stamp, left_ticks: int, right_ticks: int) -> None:
-        """Integrate encoder changes into differential-drive wheel odometry."""
+    def publish_odometry(self, stamp, source_ticks: int) -> None:
+        """Integrate single-encoder ticks into odometry.
+
+        With only one working encoder we can no longer measure the
+        difference between the two wheels' travel, so we cannot recover
+        yaw rate from the encoders. We assume the robot travels in a
+        straight line at the rate reported by the working wheel; angular
+        velocity commanded via /cmd_vel is NOT reflected in this odometry.
+        If accurate turn tracking is required, add an IMU (gyro) and fuse
+        it separately (e.g. via robot_localization) instead of relying on
+        wheel odometry alone.
+        """
         if self.ticks_per_wheel_rev <= 0.0:
             if not self.invalid_ticks_reported:
                 self.get_logger().error(
@@ -196,22 +222,18 @@ class SerialBridge(Node):
             return
 
         now_seconds = stamp.sec + stamp.nanosec * 1e-9
-        if self.last_left_ticks is None or self.last_right_ticks is None:
-            self.last_left_ticks = left_ticks
-            self.last_right_ticks = right_ticks
+        if self.last_source_ticks is None:
+            self.last_source_ticks = source_ticks
             self.last_stamp = now_seconds
             return
 
-        delta_left_ticks = left_ticks - self.last_left_ticks
-        delta_right_ticks = right_ticks - self.last_right_ticks
-        delta_left = (delta_left_ticks / self.ticks_per_wheel_rev) * 2.0 * math.pi * self.wheel_radius
-        delta_right = (delta_right_ticks / self.ticks_per_wheel_rev) * 2.0 * math.pi * self.wheel_radius
-        distance = 0.5 * (delta_left + delta_right)
-        delta_yaw = (delta_right - delta_left) / self.wheel_separation
+        delta_ticks = source_ticks - self.last_source_ticks
+        distance = (delta_ticks / self.ticks_per_wheel_rev) * 2.0 * math.pi * self.wheel_radius
+        delta_yaw = 0.0  # Cannot be measured with a single encoder.
 
-        self.x += distance * math.cos(self.yaw + 0.5 * delta_yaw)
-        self.y += distance * math.sin(self.yaw + 0.5 * delta_yaw)
-        self.yaw = math.atan2(math.sin(self.yaw + delta_yaw), math.cos(self.yaw + delta_yaw))
+        self.x += distance * math.cos(self.yaw)
+        self.y += distance * math.sin(self.yaw)
+        # yaw is left unchanged (delta_yaw == 0)
 
         elapsed = max(now_seconds - self.last_stamp, 1e-6)
         message = Odometry()
@@ -224,15 +246,16 @@ class SerialBridge(Node):
         message.pose.pose.orientation.w = math.cos(0.5 * self.yaw)
         message.twist.twist.linear.x = distance / elapsed
         message.twist.twist.angular.z = delta_yaw / elapsed
-        message.pose.covariance[0] = 0.05
-        message.pose.covariance[7] = 0.05
-        message.pose.covariance[35] = 0.1
-        message.twist.covariance[0] = 0.1
-        message.twist.covariance[35] = 0.2
+        # Wider covariances: single-encoder odometry is far less trustworthy,
+        # especially for yaw, which is entirely unobserved here.
+        message.pose.covariance[0] = 0.1
+        message.pose.covariance[7] = 0.1
+        message.pose.covariance[35] = 1e6  # yaw effectively unknown
+        message.twist.covariance[0] = 0.2
+        message.twist.covariance[35] = 1e6  # angular velocity effectively unknown
         self.odom_publisher.publish(message)
 
-        self.last_left_ticks = left_ticks
-        self.last_right_ticks = right_ticks
+        self.last_source_ticks = source_ticks
         self.last_stamp = now_seconds
 
 
